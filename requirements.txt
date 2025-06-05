@@ -1,0 +1,42 @@
+# Core LLM and Agent Framework
+langchain==0.3.14
+langchain-community==0.3.14
+langgraph==0.2.50
+ollama==0.4.4
+llama-cpp-python==0.3.2
+
+# Audio Processing
+sounddevice==0.5.1
+pyaudio==0.2.14
+scipy==1.14.1
+numpy==2.2.1
+
+# Speech-to-Text and Text-to-Speech - CONFLICT-FREE WORKING TRIO ✅
+# These versions all work together without dependency conflicts
+faster-whisper==1.1.1               # latest version, tokenizers<1,>=0.13 compatible 
+chatterbox-tts==0.1.1              # pins transformers 4.46.3
+transformers==4.46.3               # explicit pin for clarity
+tokenizers==0.20.3                 # satisfies both sides: transformers >=0.20,<0.21 and faster-whisper <1,>=0.13
+pydub==0.25.1
+
+# Database and Memory
+sqlite3-to-pandas==0.1.0
+python-dateutil==2.9.0.post0
+
+# System Integration
+pynput==1.7.7
+psutil==6.1.0
+
+# Development and Testing
+pytest==8.3.4
+pytest-asyncio==0.25.0
+ruff==0.8.4
+mypy==1.13.0
+python-dotenv==1.0.1
+
+# Utility
+aiofiles==24.1.0
+asyncio-mqtt==0.16.2
+pyyaml==6.0.2
+click==8.1.8
+rich==13.9.4 
