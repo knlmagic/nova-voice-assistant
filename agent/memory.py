@@ -249,6 +249,26 @@ class ConversationMemory:
         
         return await asyncio.get_event_loop().run_in_executor(None, _stats_sync)
     
+    async def last_user(self) -> Optional[str]:
+        """
+        Get the content of the last user message for duplicate detection.
+        
+        Returns:
+            Content of last user message, or None if no user messages exist
+        """
+        def _last_user_sync() -> Optional[str]:
+            with self._get_connection() as conn:
+                cursor = conn.execute("""
+                    SELECT content FROM conversations 
+                    WHERE role = 'user' 
+                    ORDER BY timestamp DESC 
+                    LIMIT 1
+                """)
+                row = cursor.fetchone()
+                return row[0] if row else None
+        
+        return await asyncio.get_event_loop().run_in_executor(None, _last_user_sync)
+    
     async def vacuum_database(self) -> bool:
         """
         Vacuum the database to reclaim space and optimize performance.

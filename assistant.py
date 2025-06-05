@@ -354,17 +354,33 @@ class NovaAssistant:
                     with timer("stt"):
                         stt_result = await self.stt_client.transcribe(audio_event.audio_data)
                     
-                    # Only process if we got meaningful text
-                    if stt_result.text.strip():
+                    # Apply transcript quality filtering (Step 9 UX improvements)
+                    text = stt_result.text.strip()
+                    
+                    # Ignore junk transcripts (too short or meaningless)
+                    if len(text) < 2:
+                        if self.verbose:
+                            logger.debug(f"Transcript too short – dropped: '{text}'")
+                        continue
+                    
+                    # Check for duplicate user input to prevent repeated responses
+                    last_user_text = await self.llm_client.memory.last_user()
+                    if last_user_text and text == last_user_text:
+                        if self.verbose:
+                            logger.debug(f"Duplicate user text – skipped: '{text}'")
+                        continue
+                    
+                    # Process valid transcript
+                    if text:
                         event = STTEvent(
-                            text=stt_result.text,
+                            text=text,
                             confidence=stt_result.confidence,
                             processing_time=stt_result.latency_ms / 1000,
                             timestamp=time.time()
                         )
                         
                         if not self.quiet:
-                            print(f"🗣️  You said: \"{stt_result.text}\"")
+                            print(f"🗣️  You said: \"{text}\"")
                         
                         await events.stt_queue.put(event)
                     else:
@@ -394,26 +410,33 @@ class NovaAssistant:
                         timeout=1.0
                     )
                     
-                    # Generate LLM response
+                    # Generate LLM response with FULL context storage (Step 9 UX fix)
                     with timer("llm"):
                         llm_response = await self.llm_client.generate_response(stt_event.text)
                     
-                    # Truncate for better TTS performance (Chatterbox sweet spot ≤ 25 words)
-                    response_text = llm_response.content
-                    words = response_text.split()
-                    if len(words) > 25:
-                        response_text = " ".join(words[:25]) + "..."
-                        logger.debug(f"Truncated LLM response from {len(words)} to 25 words for TTS")
+                    # Store FULL response content for memory context
+                    full_response = llm_response.content
                     
+                    # Create truncated version ONLY for TTS playback (Chatterbox sweet spot ≤ 25 words)
+                    words = full_response.split()
+                    if len(words) > 25:
+                        spoken_response = " ".join(words[:25]) + "..."
+                        logger.debug(f"Truncated LLM response from {len(words)} to 25 words for TTS")
+                    else:
+                        spoken_response = full_response
+                    
+                    # Send TRUNCATED version to TTS for faster synthesis
                     event = LLMEvent(
-                        text=response_text,
+                        text=spoken_response,
                         processing_time=llm_response.latency_ms / 1000,
                         timestamp=time.time(),
                         token_count=llm_response.completion_tokens
                     )
                     
                     if not self.quiet:
-                        print(f"🤖 Nova: \"{response_text}\"")
+                        print(f"🤖 Nova: \"{full_response}\"")  # Show full response in logs
+                        if spoken_response != full_response:
+                            print(f"🔊 Speaking (truncated): \"{spoken_response}\"")
                     
                     await events.llm_queue.put(event)
                     

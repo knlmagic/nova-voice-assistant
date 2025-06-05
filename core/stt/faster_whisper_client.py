@@ -143,14 +143,17 @@ class FasterWhisperSTT:
                     else:
                         audio_float = audio
                     
-                    # Use optimized settings for speed (~200ms faster)
+                    # Use optimized settings for speed + quality filtering (Step 9 UX improvements)
                     segments, info = self.model.transcribe(
                         audio_float,
                         beam_size=1,  # Fastest decoding (instead of config.beam_size)
                         word_timestamps=self.config.word_timestamps,
                         initial_prompt=None,
                         condition_on_previous_text=False,  # ~200ms faster
-                        temperature=0.0  # Deterministic output
+                        temperature=0.0,  # Deterministic output
+                        # Prevent garbage noise retry loops
+                        compression_ratio_threshold=1.0,
+                        no_speech_threshold=0.8  # Higher = treats low-confidence as silence
                     )
                 else:
                     # Handle file path input (with same optimizations)
@@ -160,7 +163,10 @@ class FasterWhisperSTT:
                         word_timestamps=self.config.word_timestamps,
                         initial_prompt=None,
                         condition_on_previous_text=False,  # ~200ms faster
-                        temperature=0.0  # Deterministic output
+                        temperature=0.0,  # Deterministic output
+                        # Prevent garbage noise retry loops
+                        compression_ratio_threshold=1.0,
+                        no_speech_threshold=0.8  # Higher = treats low-confidence as silence
                     )
                 
                 return segments, info
